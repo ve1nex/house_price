@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.DS_Store
+telegram_credits.json
+data/*.csv
+checkpoints/*
+!checkpoints/.gitkeep
+logs/*
+!logs/.gitkeep
+
+wandb/
+optuna/
+*.db

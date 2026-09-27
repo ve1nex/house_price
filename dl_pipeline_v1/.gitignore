@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.DS_Store
+telegram_credits.json
+checkpoints/
+logs/
+data/*.npy
+data/*.npz
+data/*.pt
+data/*.pth
+wandb/
+optuna/
+*.db
