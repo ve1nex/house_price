@@ -9,12 +9,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 config = {
     # --- General ---
     "general": {
-        "experiment_name": "baseline_v1",
+        "experiment_name": "baseline",
         "seed": 0xFACED,
-        "task": "classification",       # classification / regression
+        "task": "regression",       # classification / regression
         "num_classes": None,             # populated from training labels
-        "mode": "train",                # train / inference
-        "overwrite_experiment": False,   # protect old experiment artifacts by default
+        "mode": "inference",                # train / inference
+        "overwrite_experiment": True,   # protect old experiment artifacts by default
     },
 
     # --- Paths ---
@@ -73,8 +73,8 @@ config = {
 
     # --- Data ---
     "data": {
-        "target": "target",
-        "id_column": None,
+        "target": "SalePrice",
+        "id_column": "Id",
         "id_namespace": "row_position",  # use a shared namespace when explicit IDs exist
         "drop_columns": [],
 
@@ -98,7 +98,7 @@ config = {
     "preprocessing": {
         "numeric_imputer": "median",
         "categorical_imputer": "most_frequent",
-        "scale_numeric": True,
+        "scale_numeric": False,
         "encode_categorical": True,
     },
 
@@ -114,7 +114,7 @@ config = {
     "split": {
         # Available strategies:
         # KFold / StratifiedKFold / GroupKFold / StratifiedGroupKFold
-        "strategy": "StratifiedKFold",
+        "strategy": "KFold",
         "n_splits": 5,
         "folds_to_train": [0, 1, 2, 3, 4],
         "shuffle": True,
@@ -137,7 +137,7 @@ config = {
     # --- Model ---
     # Change only `name`; parameters for common models are stored below.
     "model": {
-        "name": "LogisticRegression",
+        "name": "LinearRegression",
     },
 
     "models": {
@@ -433,8 +433,8 @@ config = {
     # --- Metric ---
     # Uses sklearn.metrics by name, like the mentor's DL pipeline.
     "metric": {
-        "name": "accuracy_score",       # e.g. accuracy_score / f1_score / root_mean_squared_error / r2_score
-        "direction": "maximize",        # maximize / minimize; also used by Optuna
+        "name": "root_mean_squared_error",       # e.g. accuracy_score / f1_score / root_mean_squared_error / r2_score
+        "direction": "minimize",        # maximize / minimize; also used by Optuna
         "params": {},
     },
 
