@@ -55,6 +55,9 @@ def inference(config):
     else:
         classes = None
         predictions = pipeline.predict(X_test)
+        
+        if str(config.data.target_transform) == "log1p":
+            predictions = np.expm1(predictions)
 
     # --- Prediction post-processing ---
     # Empty by default; task-specific clipping/thresholds can be added later.
@@ -62,7 +65,13 @@ def inference(config):
 
     output_path = Path(config.paths.path_to_predictions)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output = save_predictions(output_path, ids, predictions, str(config.general.task), classes)
+    if str(config.general.task) == "regression":
+        output = pd.DataFrame({
+            str(config.data.id_column): ids,
+            str(config.data.target): predictions,})
+        output.to_csv(output_path, index=False)
+    else:
+        output = save_predictions(output_path, ids, predictions, str(config.general.task), classes)
     if str(config.general.task) == "classification" and len(classes) == 2 and bool(config.optimization.enabled) and bool(config.optimization.prediction.threshold_tuning.enabled):
         threshold_path = Path(config.paths.path_to_checkpoints) / "threshold.json"
         if not threshold_path.exists():

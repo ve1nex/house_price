@@ -163,10 +163,24 @@ def _select_threshold(config, targets, probs, classes):
     index = int(np.argmax(scores) if str(config.metric.direction) == "maximize" else np.argmin(scores))
     return float(values[index])
 
-
+def _transform_target(y, config):
+    if str(config.general.task) != "regression":
+        return y
+    transform = str(config.data.target_transform)
+    if transform == "none":
+        return y
+    if transform == "log1p":
+        if (np.asarray(y) < 0).any():
+            raise ValueError("log1p target transform requires target >= 0")
+        return pd.Series(
+            np.log1p(np.asarray(y, dtype=float)),
+            index=y.index,
+            name=y.name,)
+    raise ValueError(f"Unknown target transform: {transform}")
 def evaluate_cv_score(config, X, y, groups=None, folds_to_use=None):
     """Optuna evaluation without artifacts; same fold-safe preprocessing as train."""
     _check_optimization(config)
+    y = _transform_target(y, config)
     classes = list(np.unique(y)) if str(config.general.task) == "classification" else None
     requested = set(int(f) for f in (folds_to_use if folds_to_use is not None else config.split.folds_to_train))
     scores = []
@@ -184,6 +198,7 @@ def evaluate_cv_score(config, X, y, groups=None, folds_to_use=None):
 def train(config, X, y, groups=None, ids=None):
     """CV, compatible OOF artifacts, optional final fit and test inference."""
     _check_optimization(config)
+    y = _transform_target(y, config)
     ids = np.arange(len(y)) if ids is None else np.asarray(ids)
     if len(ids) != len(y) or pd.Index(ids).has_duplicates or pd.isna(ids).any():
         raise ValueError("Training IDs must be unique, non-null and match labels")
@@ -231,7 +246,10 @@ def train(config, X, y, groups=None, ids=None):
     complete = bool(mask.all())
     threshold = None
     honest_tuned_score = None
-    labels_oof = np.asarray(y)[mask] if classes is None else np.asarray(classes)[np.argmax(oof[mask], axis=1)]
+    if classes is None:
+        labels_oof = oof[mask]
+    else:
+        labels_oof = np.asarray(classes)[np.argmax(oof[mask], axis=1)]
     if classes is not None and len(classes) == 2:
         labels_oof = np.where(oof[mask, 1] >= 0.5, classes[1], classes[0])
     if bool(config.optimization.enabled) and bool(config.optimization.prediction.threshold_tuning.enabled):

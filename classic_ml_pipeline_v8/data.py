@@ -6,7 +6,6 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-
 def load_csv(path: str) -> pd.DataFrame:
     """Load a CSV dataset and fail early if the path is wrong."""
     path = Path(path)
@@ -16,10 +15,20 @@ def load_csv(path: str) -> pd.DataFrame:
 
 
 def prepare_dataframe(df: pd.DataFrame, config) -> pd.DataFrame:
-    """Universal cleanup only. Task-specific feature engineering is intentionally absent."""
-    drop_columns = list(config.data.drop_columns)
-    existing = [column for column in drop_columns if column in df.columns]
-    return df.drop(columns=existing).copy()
+    df = df.copy()
+
+    if config.data.drop_columns:
+        df = df.drop(columns=list(config.data.drop_columns), errors="ignore")
+
+    # Semantic missing values
+    for column in config.preprocessing.missing_as_none:
+        if column in df.columns:
+            df[column] = df[column].fillna("None")
+
+    for column in config.preprocessing.missing_as_zero:
+        if column in df.columns:
+            df[column] = df[column].fillna(0)
+    return df
 
 
 def split_features_target(df: pd.DataFrame, config):
@@ -57,29 +66,38 @@ def get_groups(df: pd.DataFrame, config):
 
 
 def build_preprocessor(X: pd.DataFrame, config) -> ColumnTransformer:
-    """Build simple preprocessing for numeric and categorical columns."""
     numeric_columns = X.select_dtypes(include="number").columns.tolist()
     categorical_columns = X.select_dtypes(exclude="number").columns.tolist()
 
     numeric_steps = [
-        ("imputer", SimpleImputer(strategy=config.preprocessing.numeric_imputer)),
+        ("imputer", SimpleImputer(strategy=config.preprocessing.numeric_imputer))
     ]
+
     if config.preprocessing.scale_numeric:
         numeric_steps.append(("scaler", StandardScaler()))
 
     categorical_steps = [
-        ("imputer", SimpleImputer(strategy=config.preprocessing.categorical_imputer)),
+        ("imputer", SimpleImputer(strategy=config.preprocessing.categorical_imputer))
     ]
+
     if config.preprocessing.encode_categorical:
-        categorical_steps.append(("onehot", OneHotEncoder(handle_unknown="ignore")))
+        categorical_steps.append(
+            ("onehot", OneHotEncoder(handle_unknown="ignore"))
+        )
 
     transformers = []
+
     if numeric_columns:
-        transformers.append(("num", Pipeline(numeric_steps), numeric_columns))
+        transformers.append(
+            ("num", Pipeline(numeric_steps), numeric_columns)
+        )
+
     if categorical_columns:
-        transformers.append(("cat", Pipeline(categorical_steps), categorical_columns))
+        transformers.append(
+            ("cat", Pipeline(categorical_steps), categorical_columns)
+        )
 
     if not transformers:
         raise ValueError("No usable feature columns were found")
 
-    return ColumnTransformer(transformers, remainder="drop")
+    return ColumnTransformer(transformers=transformers, remainder="drop")

@@ -9,12 +9,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 config = {
     # --- General ---
     "general": {
-        "experiment_name": "baseline",
+        "experiment_name": "elasticbest",
         "seed": 0xFACED,
         "task": "regression",       # classification / regression
         "num_classes": None,             # populated from training labels
         "mode": "inference",                # train / inference
-        "overwrite_experiment": True,   # protect old experiment artifacts by default
+        "overwrite_experiment": False,   # protect old experiment artifacts by default
     },
 
     # --- Paths ---
@@ -74,9 +74,16 @@ config = {
     # --- Data ---
     "data": {
         "target": "SalePrice",
+        "target_transform": "log1p",
         "id_column": "Id",
         "id_namespace": "row_position",  # use a shared namespace when explicit IDs exist
-        "drop_columns": [],
+        "drop_train_ids": [524, 1299, 1397],
+        "drop_columns": [
+            "GarageArea",
+            "GarageYrBlt",
+            "Exterior2nd", 
+            "GarageCond"
+            ],
 
         # Technical utility: safely downcast numeric columns when possible.
         "reduce_memory": False,  # numeric downcasting can change precision
@@ -98,15 +105,45 @@ config = {
     "preprocessing": {
         "numeric_imputer": "median",
         "categorical_imputer": "most_frequent",
-        "scale_numeric": False,
+        "scale_numeric": True,
         "encode_categorical": True,
+
+        # NaN = объекта/характеристики нет
+        "missing_as_none": [
+            "Alley",
+            "BsmtQual",
+            "BsmtCond",
+            "BsmtExposure",
+            "BsmtFinType1",
+            "BsmtFinType2",
+            "FireplaceQu",
+            "GarageType",
+            "GarageFinish",
+            "GarageQual",
+            "GarageCond",
+            "PoolQC",
+            "Fence",
+            "MiscFeature",
+            "MasVnrType",],
+
+        # NaN = соответствующей площади/количества нет
+        "missing_as_zero": [
+            "MasVnrArea",
+            "BsmtFinSF1",
+            "BsmtFinSF2",
+            "BsmtUnfSF",
+            "TotalBsmtSF",
+            "BsmtFullBath",
+            "BsmtHalfBath",
+            "GarageCars",
+            "GarageArea",],
     },
 
     # --- Feature engineering ---
     # Universal stage is kept, but the base implementation is intentionally empty.
     # Put task-specific features in features.py instead of hard-coding them here.
     "feature_engineering": {
-        "enabled": False,
+        "enabled": True,
         "status": "placeholder; implement in features.py before enabling",
     },
 
@@ -183,13 +220,15 @@ config = {
             "n_iter_no_change": None,
             "random_state": "${general.seed}",
         },
+        #ridge: 9.901641512264023
+        #lasso 0.000463018849914957
         "LinearRegression": {
-            "regularization": "none",  # none / ridge / lasso / elasticnet
-            "alpha": 1.0,              # used by ridge / lasso / elasticnet
-            "l1_ratio": 0.5,           # used by elasticnet
+            "regularization": "elasticnet",  # none / ridge / lasso / elasticnet
+            "alpha": 0.0005001389415823808,              # used by ridge / lasso / elasticnet
+            "l1_ratio": 0.922725283130898,           # used by elasticnet
             "fit_intercept": True,
             "positive": False,
-            "max_iter": 5000,          # used by ridge / lasso / elasticnet
+            "max_iter": 10000,          # used by ridge / lasso / elasticnet
             "tol": 1e-4,
             "random_state": "${general.seed}",
             "solver": "auto",         # ridge only; preserves the old Ridge setting
@@ -443,7 +482,7 @@ config = {
     # Disabled by default. When enabled: Optuna -> CV -> best params -> normal full training.
     "tuning": {
         "enabled": False,
-        "n_trials": 30,
+        "n_trials": 50,
         "direction": "auto",            # auto -> use metric.direction
         "sampler": "tpe",               # tpe / random
         "study_name": "${general.experiment_name}_tuning",
@@ -733,13 +772,13 @@ config = {
         "LinearRegression": {
             "alpha": {
                 "type": "float",
-                "low": 1e-4,
-                "high": 1000.0,
+                "low": 0.00001,
+                "high": 0.001,
                 "log": True,
             },
             "l1_ratio": {
                 "type": "float",
-                "low": 0.0,
+                "low": 0.9,
                 "high": 1.0,
             },
         },

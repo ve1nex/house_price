@@ -43,7 +43,16 @@ def fit(config):
     # --- Basic preprocessing ---
     # Universal cleanup only: columns explicitly listed in config are removed.
     df = prepare_dataframe(df, config)
+    drop_ids = list(config.data.drop_train_ids)
 
+    if drop_ids:
+        id_col = str(config.data.id_column)
+
+        before = len(df)
+        df = df[~df[id_col].isin(drop_ids)].reset_index(drop=True)
+
+        if config.logging.prints:
+            print(f"Dropped train rows: {before - len(df)} | IDs: {drop_ids}")
     # --- Feature engineering ---
     # Task-specific stage is intentionally kept as a placeholder.
     # Put the concrete features of a new task in features.py.
