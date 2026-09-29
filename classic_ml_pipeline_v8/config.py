@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 config = {
     # --- General ---
     "general": {
-        "experiment_name": "elasticbest",
+        "experiment_name": "ensemble_sklearn_stacking",
         "seed": 0xFACED,
         "task": "regression",       # classification / regression
         "num_classes": None,             # populated from training labels
@@ -174,7 +174,7 @@ config = {
     # --- Model ---
     # Change only `name`; parameters for common models are stored below.
     "model": {
-        "name": "LinearRegression",
+        "name": "GradientBoostingRegressor",
     },
 
     "models": {
@@ -257,10 +257,12 @@ config = {
             "n_jobs": 1,
         },
         "GradientBoostingRegressor": {
-            "n_estimators": 100,
-            "learning_rate": 0.1,
-            "max_depth": 3,
-            "subsample": 1.0,
+            "n_estimators": 450,
+            "learning_rate": 0.06502534449667197,
+            "max_depth": 2,
+            'subsample': 0.565744639044207,
+            'min_samples_split': 14,
+            'min_samples_leaf': 4,
             "max_features": None,
             "loss": "squared_error",
             "n_iter_no_change": None,
@@ -335,15 +337,16 @@ config = {
             "verbose": False,
         },
         "XGBRegressor": {
-            "n_estimators": 300,
-            "learning_rate": 0.05,
-            "max_depth": 6,
-            "subsample": 1.0,
-            "colsample_bytree": 1.0,
-            "reg_alpha": 0.0,
-            "reg_lambda": 0.0,
-            "gamma": 0.0,
-            "min_child_weight": 1.0,
+            "n_estimators": 250,
+            "learning_rate": 0.04542518636613426,
+            "max_depth": 4,
+            "min_child_weight": 6.932466798974734,
+            "gamma": 0.02430668963171661,
+            "subsample": 0.7120376394509951,
+            "colsample_bytree": 0.8183172250459676,
+            "reg_alpha": 0.006703085914184075,
+            "reg_lambda": 0.013231716631721216,
+
             "tree_method": "exact",
             "objective": "reg:squarederror",
             "random_state": "${general.seed}",
@@ -351,16 +354,16 @@ config = {
         },
 
         "LGBMRegressor": {
-            "n_estimators": 300,
-            "learning_rate": 0.05,
-            "num_leaves": 31,
-            "max_depth": -1,
-            "subsample": 1.0,
-            "subsample_freq": 0,
-            "colsample_bytree": 1.0,
-            "reg_alpha": 0.0,
-            "reg_lambda": 0.0,
-            "min_child_samples": 20,
+            "n_estimators": 1150,
+            "learning_rate": 0.011008771485856902,
+            "num_leaves": 24,
+            "max_depth": 9,
+            "min_child_samples": 5,
+            "subsample": 0.5366817499994514,
+            "subsample_freq": 1,
+            "colsample_bytree": 0.6695500225692324,
+            "reg_alpha": 6.087236765197375e-07,
+            "reg_lambda": 4.5668471583483656e-07,
             "min_split_gain": 0.0,
             "boosting_type": "gbdt",
             "random_state": "${general.seed}",
@@ -407,10 +410,10 @@ config = {
     # Universal ensemble block. Disabled by default, so the pipeline behaves
     # exactly like a single-model pipeline until you explicitly enable it.
     "estimator_strategy": {
-        "enabled": False,
+        "enabled": True,
 
         # bagging / voting / average / weighted_average / stacking
-        "type": "bagging",
+        "type": "stacking",
 
         # Used by voting / average / weighted_average / stacking.
         # Keep only model names that are compatible with the current task.
@@ -427,20 +430,15 @@ config = {
             ],
             "regression": [
                 "LinearRegression",
-                "KNeighborsRegressor",
-                "DecisionTreeRegressor",
-                "RandomForestRegressor",
                 "GradientBoostingRegressor",
-                "XGBRegressor",
                 "LGBMRegressor",
-                "CatBoostRegressor",
             ],
         },
 
         # Used only by weighted_average. Length must match the task's model list.
         "weights": {
             "classification": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-            "regression": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            "regression": [1.0, 1.0, 1.0],
         },
 
         # Classification voting only: hard / soft.
@@ -482,7 +480,7 @@ config = {
     # Disabled by default. When enabled: Optuna -> CV -> best params -> normal full training.
     "tuning": {
         "enabled": False,
-        "n_trials": 50,
+        "n_trials": 150,
         "direction": "auto",            # auto -> use metric.direction
         "sampler": "tpe",               # tpe / random
         "study_name": "${general.experiment_name}_tuning",
@@ -787,7 +785,7 @@ config = {
         # K-Nearest Neighbors Regressor
         # =========================
         "KNeighborsRegressor": {
-            "n_neighbors": {"type": "int", "low": 3, "high": 35, "step": 2},
+            "n_neighbors": {"type": "int", "low": 3, "high": 25, "step": 1},
             "weights": {"type": "categorical", "choices": ["uniform", "distance"]},
             "p": {"type": "categorical", "choices": [1, 2]},
         },
@@ -835,7 +833,7 @@ config = {
             "max_depth": {
                 "type": "int",
                 "low": 3,
-                "high": 30,
+                "high": 15,
             },
             "min_samples_split": {
                 "type": "int",
@@ -846,10 +844,6 @@ config = {
                 "type": "int",
                 "low": 1,
                 "high": 10,
-            },
-            "max_features": {
-                "type": "categorical",
-                "choices": ["sqrt", "log2", None],
             },
         },
 
@@ -914,7 +908,7 @@ config = {
             "max_depth": {
                 "type": "int",
                 "low": 2,
-                "high": 12,
+                "high": 8,
             },
             "min_child_weight": {
                 "type": "float",
@@ -970,12 +964,12 @@ config = {
             "num_leaves": {
                 "type": "int",
                 "low": 8,
-                "high": 128,
+                "high": 64,
             },
             "max_depth": {
                 "type": "int",
                 "low": 3,
-                "high": 15,
+                "high": 10,
             },
             "min_child_samples": {
                 "type": "int",
