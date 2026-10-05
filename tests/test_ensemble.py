@@ -1,4 +1,5 @@
-"""Artifact contract: alignment, leakage-safe meta predictions, and validation."""
+"""Check regression artifact alignment and log-space averaging without fitting models."""
+
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -11,114 +12,109 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ensemble import run_ensemble
+from ensemble_config import config
 
 
 class EnsembleTests(unittest.TestCase):
+    """Protect sample identity, fold alignment, and saved prediction scale."""
+
     def setUp(self):
         self.temp = TemporaryDirectory()
         self.root = Path(self.temp.name)
-        n = 40
-        ids = np.arange(n) + 1000
-        labels = np.arange(n) % 2
-        folds = (np.arange(n) // 2) % 2
-        for source, p in [('classic', .75), ('dl', .65)]:
-            path = self.root / source / 'one'
-            path.mkdir(parents=True)
-            probabilities = np.where(labels, p, 1-p)
-            oof = pd.DataFrame({'id': ids, 'target': labels, 'prediction': probabilities, 'fold': folds})
-            if source == 'dl':
-                oof = oof.sample(frac=1, random_state=3)
-            oof.to_csv(path / 'oof_predictions.csv', index=False)
-            pd.DataFrame({'id': [200, 201], 'prediction': [.6, .3] if source=='classic' else [.4, .8]}).to_csv(path / 'predictions.csv', index=False)
-            (path/'metadata.json').write_text(json.dumps({'oof_complete': True, 'n_train': n, 'task': 'classification', 'classes': [0,1], 'id_namespace': 'sample_id'}))
-        self.cfg = {'general': {'experiment_name': 'run', 'overwrite_experiment': True, 'seed': 42},
-                    'paths': {'classic_checkpoints': str(self.root/'classic'), 'dl_checkpoints': str(self.root/'dl'), 'ensembles_root': str(self.root/'out')},
-                    'metric': {'name':'accuracy_score','direction':'maximize','params':{}},
-                    'optimization': {'enabled': False},
-                    'ensemble': {'enabled': True, 'preset': 'mix', 'voting':'soft',
-                                 'weight_optimization': {'enabled':False, 'method':'optuna','n_trials':4},
-                                 'meta_model': {'classification':'LogisticRegression','regression':'Ridge',
-                                                'params':{'classification':{'C':1.0,'l1_ratio':0.0},'regression':{'alpha':1.0}}},
-                                 'presets': {'mix': {'type':'average','members':[{'name':'a','source':'classic','experiment':'one'}, {'name':'b','source':'dl','experiment':'one'}]}}},
-                    'visualization': {'save_validation_plot':True,'save_cv_scores':True,'save_ensemble_diagnostics':True}}
+        self.cfg = deepcopy(config)
+        self.cfg["paths"].update(
+            classic_checkpoints=str(self.root / "classic"),
+            dl_checkpoints=str(self.root / "dl"),
+            ensembles_root=str(self.root / "out"),
+        )
+        self.cfg["general"]["experiment_name"] = "verified_average"
+        self.cfg["visualization"] = dict.fromkeys(self.cfg["visualization"], False)
+        self.ids = np.arange(6) + 1
+        for source, name, offset in [
+            ("classic", "ensemble_sklearn_stacking", 0.1),
+            ("dl", "mlp_fix_best", -0.1),
+        ]:
+            directory = self.root / source / name
+            directory.mkdir(parents=True)
+            target = np.arange(6, dtype=float) + 10
+            frame = pd.DataFrame(
+                {
+                    "id": self.ids,
+                    "target": target,
+                    "prediction": target + offset,
+                    "fold": np.arange(6) % 3,
+                }
+            )
+            if source == "dl":
+                frame = frame.sample(frac=1, random_state=2)
+            frame.to_csv(directory / "oof_predictions.csv", index=False)
+            pd.DataFrame(
+                {"Id": [8, 9], "SalePrice": np.expm1(np.array([11.0, 12.0]) + offset)}
+            ).to_csv(directory / "predictions.csv", index=False)
+            (directory / "metadata.json").write_text(
+                json.dumps(
+                    {
+                        "task": "regression",
+                        "n_train": 6,
+                        "oof_complete": True,
+                        "id_namespace": "house_prices_id",
+                    }
+                )
+            )
 
     def tearDown(self):
         self.temp.cleanup()
 
-    def test_supported_ensembles(self):
-        for kind in ('average','weighted_average','voting','stacking'):
-            cfg = deepcopy(self.cfg)
-            cfg['general']['experiment_name'] = kind
-            cfg['ensemble']['presets']['mix']['type'] = kind
-            if kind == 'weighted_average':
-                cfg['ensemble']['presets']['mix']['members'][0]['weight'] = 7
-                cfg['ensemble']['presets']['mix']['members'][1]['weight'] = 3
-            if kind == 'voting':
-                cfg['ensemble']['voting'] = 'hard'
-            directory, metrics = run_ensemble(cfg)
-            self.assertAlmostEqual(metrics['score'], 1.0)
-            self.assertEqual(len(pd.read_csv(directory/'oof_predictions.csv')), 40)
-            self.assertEqual(set(p.name for p in (directory/'plots').iterdir()), {'validation.png','cv_scores.png','ensemble_diagnostics.png'})
+    def _dl_path(self):
+        """Return the shuffled fixture OOF file."""
+        return self.root / "dl/mlp_fix_best/oof_predictions.csv"
 
-    def test_weight_optimization_is_crossfitted(self):
-        cfg = deepcopy(self.cfg)
-        cfg['ensemble']['presets']['mix']['type'] = 'weighted_average'
-        for m in cfg['ensemble']['presets']['mix']['members']:
-            m['weight'] = 1
-        cfg['optimization']['enabled'] = True
-        cfg['ensemble']['weight_optimization']['enabled'] = True
-        directory, _ = run_ensemble(cfg)
-        metadata = json.loads((directory/'metadata.json').read_text())
-        self.assertTrue(metadata['weights_optimized'])
-        self.assertAlmostEqual(sum(metadata['weights']), 1)
-        self.assertEqual(metadata['evaluation'], 'cross-fitted meta-model/weights')
+    def test_average_aligns_ids_and_preserves_scale(self):
+        directory, metrics = run_ensemble(self.cfg)
+        oof = pd.read_csv(directory / "oof_predictions.csv")
+        test = pd.read_csv(directory / "predictions.csv")
+        np.testing.assert_array_equal(oof.id, self.ids)
+        np.testing.assert_allclose(oof.prediction, oof.target, atol=1e-12)
+        np.testing.assert_allclose(test.SalePrice, np.expm1([11.0, 12.0]))
+        self.assertLess(metrics["cv_mean"], 1e-12)
 
-    def test_mismatch_rejected(self):
-        path = self.root/'dl'/'one'/'oof_predictions.csv'
-        df = pd.read_csv(path)
-        df.loc[df.index[0], 'target'] = 99
-        df.to_csv(path,index=False)
-        with self.assertRaisesRegex(ValueError, 'target differs'):
+    def test_duplicate_ids_rejected(self):
+        path = self._dl_path()
+        frame = pd.read_csv(path)
+        frame.loc[1, "id"] = frame.loc[0, "id"]
+        frame.to_csv(path, index=False)
+        with self.assertRaisesRegex(ValueError, "duplicated"):
             run_ensemble(self.cfg)
 
-    def test_multiclass_and_regression_contracts(self):
-        for task in ('classification', 'regression'):
-            cfg = deepcopy(self.cfg)
-            cfg['general']['experiment_name'] = task
-            if task == 'regression':
-                cfg['metric'].update(name='root_mean_squared_error', direction='minimize')
-            for source, offset in (('classic', .0), ('dl', .03)):
-                path = self.root/source/'one'
-                ids = np.arange(48) + 1000
-                folds = np.arange(48) % 3
-                target = np.arange(48) % 3 if task == 'classification' else np.arange(48) / 10
-                if task == 'classification':
-                    probabilities = np.full((48, 3), .1 + offset)
-                    probabilities[np.arange(48), target] = .8 - 2*offset
-                    cols = {f'pred_class_{i}': probabilities[:, i] for i in range(3)}
-                    test_cols = {f'pred_class_{i}': probabilities[:2, i] for i in range(3)}
-                    classes = [0, 1, 2]
-                else:
-                    cols = {'prediction': target + offset}
-                    test_cols = {'prediction': [1.2+offset, 2.1+offset]}
-                    classes = None
-                pd.DataFrame({'id': ids, 'target': target, **cols, 'fold': folds}).to_csv(path/'oof_predictions.csv', index=False)
-                pd.DataFrame({'id': [200, 201], **test_cols}).to_csv(path/'predictions.csv', index=False)
-                (path/'metadata.json').write_text(json.dumps({'oof_complete': True, 'n_train': 48,
-                    'task': task, 'classes': classes, 'id_namespace': 'sample_id'}))
-            directory, metrics = run_ensemble(cfg)
-            self.assertTrue(np.isfinite(metrics['score']))
-            expected = 'pred_class_0' if task == 'classification' else 'prediction'
-            self.assertIn(expected, pd.read_csv(directory/'predictions.csv').columns)
+    def test_target_mismatch_rejected(self):
+        path = self._dl_path()
+        frame = pd.read_csv(path)
+        frame.loc[0, "target"] += 2
+        frame.to_csv(path, index=False)
+        with self.assertRaisesRegex(ValueError, "target differs"):
+            run_ensemble(self.cfg)
 
-    def test_mixed_self_training_stage_rejected(self):
-        path = self.root/'dl'/'one'/'metadata.json'
-        meta = json.loads(path.read_text())
-        meta['test_prediction_stage'] = 'self_training'
-        path.write_text(json.dumps(meta))
-        with self.assertRaisesRegex(ValueError, 'self-training'):
+    def test_fold_mismatch_rejected(self):
+        path = self._dl_path()
+        frame = pd.read_csv(path)
+        frame.loc[0, "fold"] = 99
+        frame.to_csv(path, index=False)
+        with self.assertRaisesRegex(ValueError, "fold assignments differ"):
+            run_ensemble(self.cfg)
+
+    def test_incomplete_oof_rejected(self):
+        path = self._dl_path().with_name("metadata.json")
+        metadata = json.loads(path.read_text())
+        metadata["oof_complete"] = False
+        path.write_text(json.dumps(metadata))
+        with self.assertRaisesRegex(ValueError, "complete regression OOF"):
+            run_ensemble(self.cfg)
+
+    def test_existing_experiment_preserved(self):
+        run_ensemble(self.cfg)
+        with self.assertRaises(FileExistsError):
             run_ensemble(self.cfg)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

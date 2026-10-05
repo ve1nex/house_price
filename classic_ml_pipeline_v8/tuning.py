@@ -5,7 +5,6 @@ import numpy as np
 import optuna
 from omegaconf import OmegaConf
 
-from tracking import log_metrics, log_summary
 from train import evaluate_cv_score
 
 
@@ -44,20 +43,20 @@ def _suggest_value(trial, name, spec):
 
 
 def _get_direction(config) -> str:
+    """Resolve and validate the Optuna optimization direction."""
     direction = str(config.tuning.direction)
 
     if direction == "auto":
         direction = str(config.metric.direction)
 
     if direction not in {"maximize", "minimize"}:
-        raise ValueError(
-            "tuning.direction must be 'auto', 'maximize' or 'minimize'"
-        )
+        raise ValueError("tuning.direction must be 'auto', 'maximize' or 'minimize'")
 
     return direction
 
 
 def _make_sampler(config):
+    """Create the configured seeded Optuna sampler."""
     sampler_name = str(config.tuning.sampler).lower()
     seed = int(config.general.seed)
 
@@ -71,6 +70,7 @@ def _make_sampler(config):
 
 
 def _make_pruner():
+    """Create the pruning policy for unpromising Optuna trials."""
     return optuna.pruners.MedianPruner(
         n_startup_trials=5,
         n_warmup_steps=1,
@@ -79,6 +79,7 @@ def _make_pruner():
 
 
 def _storage_uri(config) -> str:
+    """Build the SQLite URI for the experiment tuning database."""
     path = Path(config.paths.path_to_optuna_db).expanduser().resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -86,6 +87,7 @@ def _storage_uri(config) -> str:
 
 
 def apply_best_params(config, best_params: dict) -> None:
+    """Apply recorded Optuna parameters to the model configuration."""
     model_name = str(config.model.name)
 
     for param_name, value in best_params.items():
@@ -93,6 +95,7 @@ def apply_best_params(config, best_params: dict) -> None:
 
 
 def _active_search_space(config, model_name):
+    """Select parameters appropriate for the chosen regularization mode."""
     if model_name not in config.tuning.search_spaces:
         raise ValueError(
             f"No tuning search space for model '{model_name}'. "
@@ -104,9 +107,7 @@ def _active_search_space(config, model_name):
     if model_name != "LinearRegression":
         return space
 
-    mode = str(
-        config.models.LinearRegression.regularization
-    ).lower()
+    mode = str(config.models.LinearRegression.regularization).lower()
 
     active = {
         "none": set(),
@@ -116,27 +117,24 @@ def _active_search_space(config, model_name):
     }
 
     if mode not in active:
-        raise ValueError(
-            f"Unknown LinearRegression regularization: {mode!r}"
-        )
+        raise ValueError(f"Unknown LinearRegression regularization: {mode!r}")
 
     missing = active[mode] - set(space)
 
     if missing:
         raise ValueError(
-            f"LinearRegression/{mode} tuning is missing: "
-            f"{sorted(missing)}"
+            f"LinearRegression/{mode} tuning is missing: {sorted(missing)}"
         )
 
     return {
         key: spec
         for key, spec in space.items()
-        if key not in {"alpha", "l1_ratio"}
-        or key in active[mode]
+        if key not in {"alpha", "l1_ratio"} or key in active[mode]
     }
 
 
 def _save_tuning_results(config, study) -> None:
+    """Persist trial history and best parameters for later review."""
     tuning_dir = Path(config.paths.path_to_tuning)
     tuning_dir.mkdir(parents=True, exist_ok=True)
 
@@ -159,6 +157,7 @@ def _save_tuning_results(config, study) -> None:
 
 
 def run_tuning(config, X, y, groups=None):
+    """Evaluate the configured hyperparameter search with cross-validation."""
     model_name = str(config.model.name)
 
     search_space = _active_search_space(
@@ -168,22 +167,16 @@ def run_tuning(config, X, y, groups=None):
 
     if len(search_space) == 0 and not (
         model_name == "LinearRegression"
-        and str(
-            config.models.LinearRegression.regularization
-        ).lower() == "none"
+        and str(config.models.LinearRegression.regularization).lower() == "none"
     ):
-        raise ValueError(
-            f"Search space for '{model_name}' is empty"
-        )
+        raise ValueError(f"Search space for '{model_name}' is empty")
 
-    folds = [
-        int(fold)
-        for fold in config.tuning.folds_to_use
-    ]
+    folds = [int(fold) for fold in config.tuning.folds_to_use]
 
     def objective(trial):
         trial_config = copy.deepcopy(config)
 
+        trial_config.estimator_strategy.enabled = False
         sampled_params = {}
         for param_name, spec in search_space.items():
             value = _suggest_value(
@@ -207,9 +200,7 @@ def run_tuning(config, X, y, groups=None):
 
             fold_scores.append(float(fold_score))
 
-            intermediate_score = float(
-                np.mean(fold_scores)
-            )
+            intermediate_score = float(np.mean(fold_scores))
             trial.report(
                 intermediate_score,
                 step=step,
@@ -221,21 +212,6 @@ def run_tuning(config, X, y, groups=None):
                 )
 
         score = float(np.mean(fold_scores))
-        if bool(config.tuning.log_trials_to_wandb):
-            payload = {
-                "tuning/trial": trial.number,
-                "tuning/score": score,
-            }
-
-            for name, value in sampled_params.items():
-                payload[f"tuning/params/{name}"] = value
-
-            log_metrics(
-                config,
-                payload,
-                step=trial.number,
-            )
-
         return score
 
     try:
@@ -245,9 +221,7 @@ def run_tuning(config, X, y, groups=None):
             sampler=_make_sampler(config),
             pruner=_make_pruner(),
             storage=_storage_uri(config),
-            load_if_exists=bool(
-                config.tuning.resume_study
-            ),
+            load_if_exists=bool(config.tuning.resume_study),
         )
 
     except optuna.exceptions.DuplicatedStudyError as error:
@@ -257,11 +231,7 @@ def run_tuning(config, X, y, groups=None):
             "tuning.resume_study=True after verifying data/config"
         ) from error
 
-    n_trials = (
-        1
-        if not search_space
-        else int(config.tuning.n_trials)
-    )
+    n_trials = 1 if not search_space else int(config.tuning.n_trials)
 
     study.optimize(
         objective,
@@ -273,24 +243,13 @@ def run_tuning(config, X, y, groups=None):
         study,
     )
 
-    log_summary(
-        config,
-        {
-            "tuning_best_value": float(study.best_value),
-            "tuning_best_params": dict(study.best_params),
-            "tuning_trials": len(study.trials),
-        },
-    )
-
     if bool(config.logging.prints):
         complete_trials = sum(
-            trial.state == optuna.trial.TrialState.COMPLETE
-            for trial in study.trials
+            trial.state == optuna.trial.TrialState.COMPLETE for trial in study.trials
         )
 
         pruned_trials = sum(
-            trial.state == optuna.trial.TrialState.PRUNED
-            for trial in study.trials
+            trial.state == optuna.trial.TrialState.PRUNED for trial in study.trials
         )
 
         print("\nOptuna tuning finished")

@@ -5,12 +5,12 @@ import numpy as np
 import optuna
 from omegaconf import OmegaConf
 
-from multi_head import get_metric_direction
 from train import run_fold
 from utils import set_seed
 
 
 def _suggest_value(trial, name, spec):
+    """Sample one parameter from its configured Optuna distribution."""
     param_type = str(spec["type"])
 
     if param_type == "int":
@@ -40,15 +40,17 @@ def _suggest_value(trial, name, spec):
 
 
 def _get_direction(config) -> str:
+    """Resolve and validate the Optuna optimization direction."""
     direction = str(config.tuning.direction)
     if direction == "auto":
-        direction = str(get_metric_direction(config))
+        direction = str(config.metric.direction)
     if direction not in {"maximize", "minimize"}:
         raise ValueError("tuning.direction must be 'auto', 'maximize' or 'minimize'")
     return direction
 
 
 def _make_sampler(config):
+    """Create the configured seeded Optuna sampler."""
     name = str(config.tuning.sampler).lower()
     seed = int(config.general.seed)
 
@@ -61,6 +63,7 @@ def _make_sampler(config):
 
 
 def _make_pruner(config):
+    """Create the pruning policy for unpromising Optuna trials."""
     if not bool(config.tuning.pruning.enabled):
         return optuna.pruners.NopPruner()
 
@@ -71,6 +74,7 @@ def _make_pruner(config):
 
 
 def _storage_uri(config) -> str:
+    """Build the SQLite URI for the experiment tuning database."""
     path = Path(config.paths.path_to_optuna_db).expanduser().resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     return f"sqlite:///{path}"
@@ -80,37 +84,30 @@ def apply_best_params(config, best_params: dict) -> None:
     """Apply Optuna's best values to their config paths."""
     for name, value in best_params.items():
         spec = config.tuning.search_space[name]
-        OmegaConf.update(config, str(spec.path), value, merge=False)
+        _set_path(config, str(spec.path), value)
 
 
 def _trial_config(config, trial):
-    if str(config.tuning.trial_stage) != "base_model":
-        raise ValueError("Only tuning.trial_stage='base_model' is implemented")
+    """Create a trial configuration without persistent model artifacts."""
     trial_config = copy.deepcopy(config)
 
     for name, spec in config.tuning.search_space.items():
         value = _suggest_value(trial, str(name), spec)
-        OmegaConf.update(trial_config, str(spec.path), value, merge=False)
+        _set_path(trial_config, str(spec.path), value)
 
     # Tuning should be lightweight. The final best run uses the normal settings.
-    trial_config.split.all_data_train = False
-    trial_config.training.resume_from_latest_checkpoint = False
     trial_config.visualization.save_training_curves = False
     trial_config.visualization.save_validation_plot = False
     trial_config.visualization.save_cv_scores = False
-    trial_config.tracking.wandb = False
-    trial_config.tracking.tensorboard = False
-    trial_config.logging.telegram = False
     trial_config.logging.prints = False
     trial_config.logging.txt_file = False
     trial_config.logging.csv_file = False
-    trial_config.conversion.enabled = False
-    trial_config.strategies.self_training.enabled = False
 
     return trial_config
 
 
 def _save_tuning_results(config, study) -> None:
+    """Persist trial history and best parameters for later review."""
     tuning_dir = Path(config.paths.path_to_tuning)
     tuning_dir.mkdir(parents=True, exist_ok=True)
 
@@ -142,7 +139,10 @@ def run_tuning(config, features, labels, groups=None, fold_ids=None):
         raise ValueError("config.tuning.folds_to_use is empty")
 
     def objective(trial):
-        set_seed(int(config.general.seed), deterministic=bool(config.reproducibility.deterministic))
+        set_seed(
+            int(config.general.seed),
+            deterministic=bool(config.reproducibility.deterministic),
+        )
         trial_config = _trial_config(config, trial)
         scores = []
 
@@ -159,7 +159,6 @@ def run_tuning(config, features, labels, groups=None, fold_ids=None):
                 trial=trial if bool(config.tuning.pruning.enabled) else None,
                 trial_step_offset=fold_position * int(trial_config.training.num_epochs),
                 save_artifacts=False,
-                enable_tracking=False,
             )
             scores.append(float(result["score"]))
 
@@ -167,12 +166,17 @@ def run_tuning(config, features, labels, groups=None, fold_ids=None):
 
     try:
         study = optuna.create_study(
-            study_name=str(config.tuning.study_name), direction=_get_direction(config),
-            sampler=_make_sampler(config), pruner=_make_pruner(config),
-            storage=_storage_uri(config), load_if_exists=bool(config.tuning.resume_study),
+            study_name=str(config.tuning.study_name),
+            direction=_get_direction(config),
+            sampler=_make_sampler(config),
+            pruner=_make_pruner(config),
+            storage=_storage_uri(config),
+            load_if_exists=bool(config.tuning.resume_study),
         )
     except optuna.exceptions.DuplicatedStudyError as error:
-        raise ValueError("Optuna study already exists. Choose a new experiment_name or set tuning.resume_study=True after verifying data/config") from error
+        raise ValueError(
+            "Optuna study already exists. Choose a new experiment_name or set tuning.resume_study=True after verifying data/config"
+        ) from error
 
     study.optimize(objective, n_trials=int(config.tuning.n_trials))
     _save_tuning_results(config, study)
@@ -183,3 +187,12 @@ def run_tuning(config, features, labels, groups=None, fold_ids=None):
         print(f"Best params: {study.best_params}")
 
     return dict(study.best_params), study
+
+
+def _set_path(config, path, value):
+    """Update a nested setting, including an item of model.params.hidden_dims."""
+    parts = path.split(".")
+    node = config
+    for part in parts[:-1]:
+        node = node[int(part)] if part.isdigit() else node[part]
+    node[int(parts[-1]) if parts[-1].isdigit() else parts[-1]] = value

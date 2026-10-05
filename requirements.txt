@@ -1,7 +1,4 @@
-numpy>=2.0
-pandas>=2.2
-scikit-learn>=1.8
-matplotlib>=3.8
+-r classic_ml_pipeline_v8/requirements.txt
+-r dl_pipeline_v1/requirements.txt
 PyYAML>=6.0
-joblib>=1.4
-optuna>=4.0
+seaborn>=0.13,<0.14

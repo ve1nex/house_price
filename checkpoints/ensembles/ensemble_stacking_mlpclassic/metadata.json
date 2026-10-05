@@ -1,0 +1,33 @@
+{
+  "experiment": "ensemble_stacking_mlpclassic",
+  "preset": "classic_mlp_stacking",
+  "type": "stacking",
+  "task": "regression",
+  "classes": null,
+  "id_namespace": "row_position",
+  "members": [
+    {
+      "name": "classic",
+      "source": "classic",
+      "experiment": "ensemble_sklearn_stacking"
+    },
+    {
+      "name": "mlp",
+      "source": "dl",
+      "experiment": "mlp_fix_best"
+    }
+  ],
+  "weights": null,
+  "weights_optimized": false,
+  "meta_model": {
+    "name": "Ridge",
+    "params": {
+      "alpha": 1.0
+    }
+  },
+  "oof_complete": true,
+  "n_train": 1457,
+  "n_test": 1459,
+  "training_time_seconds": 0.05575266701634973,
+  "evaluation": "cross-fitted meta-model/weights"
+}

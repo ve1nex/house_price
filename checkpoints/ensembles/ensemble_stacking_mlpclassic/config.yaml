@@ -1,0 +1,57 @@
+general:
+  experiment_name: ensemble_stacking_mlpclassic
+  overwrite_experiment: false
+  seed: 1027309
+paths:
+  classic_checkpoints: /Users/ve1nex/Desktop/house_price/classic_ml_pipeline_v8/checkpoints
+  dl_checkpoints: /Users/ve1nex/Desktop/house_price/dl_pipeline_v1/checkpoints
+  ensembles_root: /Users/ve1nex/Desktop/house_price/checkpoints/ensembles
+metric:
+  name: root_mean_squared_error
+  direction: minimize
+  params: {}
+optimization:
+  enabled: false
+ensemble:
+  enabled: true
+  preset: classic_mlp_stacking
+  target_transform: log1p
+  voting: soft
+  weight_optimization:
+    enabled: false
+    method: optuna
+    n_trials: 100
+  meta_model:
+    classification: LogisticRegression
+    regression: Ridge
+    params:
+      classification:
+        C: .inf
+        l1_ratio: 0.0
+        solver: lbfgs
+        max_iter: 1000
+      regression:
+        alpha: 1.0
+  presets:
+    classic_mlp_average:
+      type: average
+      members:
+      - name: classic
+        source: classic
+        experiment: ensemble_sklearn_stacking
+      - name: mlp
+        source: dl
+        experiment: mlp_fix_best
+    classic_mlp_stacking:
+      type: stacking
+      members:
+      - name: classic
+        source: classic
+        experiment: ensemble_sklearn_stacking
+      - name: mlp
+        source: dl
+        experiment: mlp_fix_best
+visualization:
+  save_validation_plot: true
+  save_cv_scores: true
+  save_ensemble_diagnostics: true

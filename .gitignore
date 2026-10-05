@@ -1,33 +1,6 @@
-# Python
 __pycache__/
 *.py[cod]
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Environments
 .venv/
-venv/
-env/
-
-# macOS
 .DS_Store
-
-# IDE
-.idea/
-.vscode/
-
-# Secrets
-.env
-*.env
-telegram_credits.json
-
-# Generated artifacts
-checkpoints/
-logs/
-wandb/
-runs/
-
-# Temporary files
-*.tmp
-*.log
+.ipynb_checkpoints/
+outputs/

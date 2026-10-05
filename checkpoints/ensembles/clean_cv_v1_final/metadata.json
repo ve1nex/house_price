@@ -1,0 +1,21 @@
+{
+  "task": "regression",
+  "n_train": 1457,
+  "n_test": 1459,
+  "oof_complete": true,
+  "id_namespace": "house_prices_id",
+  "members": [
+    {
+      "name": "classic",
+      "source": "classic",
+      "experiment": "clean_cv_v1_classic"
+    },
+    {
+      "name": "mlp",
+      "source": "dl",
+      "experiment": "clean_cv_v1_dl"
+    }
+  ],
+  "type": "average",
+  "evaluation": "OOF blend"
+}

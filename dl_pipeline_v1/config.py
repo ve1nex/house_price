@@ -1,43 +1,30 @@
 from pathlib import Path
+
 from omegaconf import OmegaConf
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 config = {
-    # --- General ---
     "general": {
-        "experiment_name": "dl_baseline_v2",
-        "seed": 0xFACED,
-        "task": "classification",          # classification / regression
-        "mode": "train",                   # train / inference
-        "num_classes": 3,
+        "experiment_name": "mlp_fix_best",
+        "seed": 1027309,
+        "task": "regression",
+        "mode": "inference",
         "overwrite_experiment": False,
     },
-
-    # --- Paths ---
     "paths": {
-        "path_to_train_features": str(PROJECT_ROOT / "data" / "train_features.npy"),
-        "path_to_train_labels": str(PROJECT_ROOT / "data" / "train_labels.npy"),
-        "path_to_test_features": str(PROJECT_ROOT / "data" / "test_features.npy"),
-        "path_to_train_ids": None,
-        "path_to_test_ids": None,
-
-        "path_to_unlabeled_features": None,
-        "path_to_groups": None,
-        "path_to_folds": None,
-
-        "path_to_checkpoints": str(PROJECT_ROOT / "checkpoints" / "${general.experiment_name}"),
+        "path_to_test_features": str(PROJECT_ROOT / "data/test_features.npy"),
+        "path_to_checkpoints": str(
+            PROJECT_ROOT / "checkpoints/${general.experiment_name}"
+        ),
         "path_to_fold_checkpoints": "${paths.path_to_checkpoints}/folds",
         "path_to_oof": "${paths.path_to_checkpoints}/oof_predictions.csv",
         "path_to_oof_raw": "${paths.path_to_checkpoints}/oof_raw_outputs.npz",
         "path_to_predictions": "${paths.path_to_checkpoints}/predictions.csv",
         "path_to_plots": "${paths.path_to_checkpoints}/plots",
-        "path_to_exports": "${paths.path_to_checkpoints}/exports",
         "path_to_config_snapshot": "${paths.path_to_checkpoints}/config.yaml",
         "path_to_metadata": "${paths.path_to_checkpoints}/metadata.json",
         "path_to_environment": "${paths.path_to_checkpoints}/environment.json",
-        "path_to_self_training": "${paths.path_to_checkpoints}/self_training",
-
         "path_to_logs": str(PROJECT_ROOT / "logs"),
         "path_to_optuna_root": str(PROJECT_ROOT / "optuna"),
         "path_to_optuna_db": "${paths.path_to_optuna_root}/${general.experiment_name}.db",
@@ -46,12 +33,13 @@ config = {
         "path_to_best_params": "${paths.path_to_tuning}/best_params.yaml",
         "path_to_results_csv": "${paths.path_to_logs}/results.csv",
         "path_to_results_txt": "${paths.path_to_logs}/results.txt",
-
-        "telegram_credentials": str(PROJECT_ROOT / "telegram_credits.json"),
-        "tensorboard_dir": "${paths.path_to_checkpoints}/tensorboard",
+        "path_to_train_dataset": str(
+            PROJECT_ROOT / "../classic_ml_pipeline_v8/data/train.csv"
+        ),
+        "path_to_test_dataset": str(
+            PROJECT_ROOT / "../classic_ml_pipeline_v8/data/test.csv"
+        ),
     },
-
-    # --- Reproducibility ---
     "reproducibility": {
         "save_config_snapshot": True,
         "save_environment": True,
@@ -59,281 +47,148 @@ config = {
         "calculate_dataset_hash": False,
         "deterministic": True,
     },
-
-    # --- Data ---
     "data": {
-        "feature_key": None,
-        "label_key": None,
-        "id_namespace": "row_position",
+        "target": "SalePrice",
+        "id_column": "Id",
+        "id_namespace": "house_prices_id",
+        "target_transform": "log1p",
+        "drop_train_ids": [524, 1299, 1397],
+        "drop_columns": ["GarageArea", "GarageYrBlt", "Exterior2nd", "GarageCond"],
     },
-
-    # --- Task-specific sample preprocessing ---
-    "preprocessing": {"enabled": False, "status": "placeholder; implement in preprocessing.py"},
-
-    # --- Augmentations ---
-    "augmentations": {
-        "enabled": False,
-        "status": "placeholder; implement in augmentations.py",
-    },
-
-    # --- Validation ---
     "split": {
-        "strategy": "StratifiedKFold",     # KFold / StratifiedKFold / GroupKFold / StratifiedGroupKFold
+        "strategy": "KFold",
         "n_splits": 5,
         "folds_to_train": [0, 1, 2, 3, 4],
         "folds_to_inference": [0, 1, 2, 3, 4],
         "shuffle": True,
-        "already_split": False,
-        "all_data_train": False,
     },
-
-    # --- Ordinary training, without additional techniques ---
     "training": {
-        "num_epochs": 30,
+        "num_epochs": 300,
         "device": "auto",
-        "debug": False,
-        "number_of_train_debug_samples": 512,
-        "number_of_val_debug_samples": 256,
         "save_best": True,
         "save_last": True,
-        "resume_from_latest_checkpoint": False,
     },
-    "dataloader_params": {"batch_size": 64, "shuffle": True, "drop_last": False},
-
-    # --- Explicit regularization ---
+    "dataloader_params": {"batch_size": 16, "shuffle": True, "drop_last": False},
     "regularization": {
-        "enabled": False,
-        "dropout": {"enabled": False, "p": 0.2},
-        "weight_decay": {"enabled": False, "value": 1e-4},
+        "enabled": True,
+        "dropout": {"enabled": True, "p": 0.05641011715961437},
+        "weight_decay": {"enabled": True, "value": 1.0899202432093064e-05},
     },
-
-    # --- Extra techniques in one run; master switch overrides all children ---
     "optimization": {
-        "enabled": False,
-        "speed": {
-            "amp": {"enabled": False},
-            "compile": {"enabled": False, "backend": "inductor", "mode": "default"},
-            "fused_optimizer": {"enabled": False},
-            "optimized_dataloader": {"enabled": False, "num_workers": 2, "pin_memory": True,
-                                     "persistent_workers": True, "prefetch_factor": 2},
-        },
-        "memory": {
-            "gradient_accumulation": {"enabled": False, "steps": 4},
-            "gradient_checkpointing": {"enabled": False, "status": "placeholder"},
-        },
+        "enabled": True,
         "training_control": {
-            "early_stopping": {"enabled": False, "patience": 7},
-            "gradient_clipping": {"enabled": False, "max_norm": 1.0},
-            "scheduler": {"enabled": False},
-            "warmup": {"enabled": False},
-            "ema": {"enabled": False, "decay": 0.999, "update_after_step": 0},
-        },
-        "model_compression": {
-            "quantization": {"enabled": False, "status": "placeholder", "mode": "PTQ", "api": "torchao.quantization.quantize_"},
-            "pruning": {"enabled": False, "status": "placeholder"},
-            "knowledge_distillation": {"enabled": False, "status": "placeholder"},
+            "early_stopping": {"enabled": True, "patience": 25},
+            "gradient_clipping": {"enabled": True, "max_norm": 1.0},
+            "scheduler": {"enabled": True},
         },
     },
-
-    # --- Hyperparameter tuning / Optuna ---
-    # Disabled by default. Tuning uses selected folds and then the normal pipeline
-    # trains once more with the best parameters.
     "tuning": {
         "enabled": False,
-        "n_trials": 20,
-        "direction": "auto",            # auto -> use the primary metric direction
-        "sampler": "tpe",               # tpe / random
+        "n_trials": 300,
+        "direction": "auto",
+        "sampler": "tpe",
         "study_name": "${general.experiment_name}_tuning",
         "resume_study": False,
-        "trial_stage": "base_model",      # self-training and export run only after the best trial
-        "folds_to_use": [0],             # usually 1 fold for fast DL search
-
-        # Stop clearly bad trials before all epochs are finished.
-        "pruning": {
-            "enabled": False,
-            "n_startup_trials": 5,
-            "n_warmup_steps": 3,
-        },
-
-        # Generic search space. `path` points to any config value.
-        # Add/remove parameters without changing tuning.py.
+        "folds_to_use": [0, 1, 2],
+        "pruning": {"enabled": True, "n_startup_trials": 10, "n_warmup_steps": 10},
         "search_space": {
             "learning_rate": {
                 "path": "optimizer.params.lr",
                 "type": "float",
-                "low": 1e-5,
-                "high": 1e-2,
+                "low": 1e-05,
+                "high": 0.005,
                 "log": True,
             },
             "batch_size": {
                 "path": "dataloader_params.batch_size",
                 "type": "categorical",
-                "choices": [32, 64, 128],
+                "choices": [16, 32, 64, 128],
+            },
+            "hidden_dim_1": {
+                "path": "model.params.hidden_dims.0",
+                "type": "categorical",
+                "choices": [16, 32, 64, 128, 256, 512],
+            },
+            "hidden_dim_2": {
+                "path": "model.params.hidden_dims.1",
+                "type": "categorical",
+                "choices": [8, 16, 32, 64, 128, 256],
+            },
+            "hidden_dim_3": {
+                "path": "model.params.hidden_dims.2",
+                "type": "categorical",
+                "choices": [8, 16, 32, 64, 128],
+            },
+            "activation": {
+                "path": "model.params.activation",
+                "type": "categorical",
+                "choices": ["ReLU", "GELU", "SiLU"],
+            },
+            "dropout": {
+                "path": "regularization.dropout.p",
+                "type": "float",
+                "low": 0.0,
+                "high": 0.5,
+            },
+            "weight_decay": {
+                "path": "regularization.weight_decay.value",
+                "type": "float",
+                "low": 1e-08,
+                "high": 0.01,
+                "log": True,
+            },
+            "optimizer": {
+                "path": "optimizer.name",
+                "type": "categorical",
+                "choices": ["Adam", "AdamW"],
+            },
+            "scheduler_enabled": {
+                "path": "optimization.training_control.scheduler.enabled",
+                "type": "categorical",
+                "choices": [False, True],
+            },
+            "scheduler_T_max": {
+                "path": "scheduler.params.T_max",
+                "type": "int",
+                "low": 20,
+                "high": 150,
+                "step": 10,
+            },
+            "scheduler_eta_min": {
+                "path": "scheduler.params.eta_min",
+                "type": "float",
+                "low": 1e-07,
+                "high": 0.0001,
+                "log": True,
             },
         },
     },
-
-    # --- Model ---
-    # Add project-specific architectures in models.py. MLP and TransformerMLP are reusable examples.
     "model": {
-        "name": "MLP",                    # MLP / TransformerMLP / custom
-        "input_shape": [20],
-        "params": {
-            # MLP params
-            "hidden_dims": [128, 64],
-            "activation": "ReLU",
-
-            # TransformerMLP params (used only when model.name=TransformerMLP)
-            "d_model": 64,
-            "nhead": 4,
-            "num_layers": 2,
-            "dim_feedforward": 128,
-            "head_hidden_dims": [64],
-        },
+        "name": "MLP",
+        "input_shape": [293],
+        "params": {"hidden_dims": [64, 32, 128], "activation": "SiLU"},
     },
-
-    # --- Model and training strategies, independent of optimization ---
-    "strategies": {
-        # --- Fine-tuning / transfer learning ---
-        # Generic mechanism. A custom model should expose model.backbone and model.head(s).
-        "finetuning": {
-            "enabled": False,
-            "source": "checkpoint",            # checkpoint / model_builtin
-            "checkpoint_path": None,            # .pt/.pth; can be our checkpoint or a plain state_dict
-            "strict_load": False,
-            "freeze_backbone": True,
-            "freeze_batchnorms": False,
-            "unfreeze_after_epoch": 3,          # 0 -> backbone trainable from first epoch
-            "backbone_lr": 1e-5,
-            "head_lr": 1e-3,
-        },
-
-        # --- Metric learning ---
-        # Keeps ordinary supervised loss and optionally adds an embedding loss.
-        "metric_learning": {
-            "enabled": False,
-            "embedding_dim": 64,
-            "margin": 0.3,
-            "metric_loss_weight": 1.0,
-            "supervised_loss_weight": 1.0,
-            "normalize_embeddings": True,
-            "balanced_batches": True,
-            "classes_per_batch": 4,
-            "samples_per_class": 4,
-            "label_head": None,                 # for multi-head; None -> primary_head
-        },
-
-        # --- Hard negative mining ---
-        # Used by the metric-learning triplet loss. When disabled, negatives are sampled normally.
-        "hard_negative_mining": {
-            "enabled": False,
-            "strategy": "batch_hard",          # currently batch_hard
-        },
-
-        # --- Self-training / pseudo-label cycle ---
-        # Base train -> predict unlabeled -> keep confident pseudo-labels -> retrain.
-        "self_training": {
-            "enabled": False,
-            "confidence_threshold": 0.95,
-            "max_rounds": 1,
-            "min_pseudo_samples": 1,
-            "save_pseudo_labels": True,
-        },
-
-        # --- Multi-head learning ---
-        # If enabled, path_to_train_labels must be an .npz with arrays named like the heads below.
-        # The primary head drives CV stratification / main validation score.
-        "multi_head": {
-            "enabled": False,
-            "primary_head": "main",
-            "heads": {
-                "main": {
-                    "task": "classification",
-                    "num_outputs": 3,
-                    "loss_name": "CrossEntropyLoss",
-                    "loss_params": {},
-                    "loss_weight": 1.0,
-                    "metric_name": "accuracy_score",
-                    "metric_params": {},
-                    "metric_direction": "maximize",
-                },
-                # Example auxiliary head; remove/rename for a concrete project.
-                # "aux": {
-                #     "task": "regression",
-                #     "num_outputs": 1,
-                #     "loss_name": "MSELoss",
-                #     "loss_params": {},
-                #     "loss_weight": 0.2,
-                #     "metric_name": "mean_squared_error",
-                #     "metric_params": {},
-                #     "metric_direction": "minimize",
-                # },
-            },
-        },
-
-    },
-
-    # --- Optimizer ---
     "optimizer": {
-        "name": "AdamW",
-        "params": {
-            "lr": 1e-3,
-            "weight_decay": 0.0,  # overridden only by regularization.weight_decay
-        },
+        "name": "Adam",
+        "params": {"lr": 0.0010697325967296643, "weight_decay": 0.0},
     },
-
-    # --- Scheduler ---
     "scheduler": {
         "name": "CosineAnnealingLR",
         "interval": "epoch",
-        "params": {"T_max": 25, "eta_min": 1e-6},
-        "warmup": {"epochs": 3, "start_factor": 0.1},
+        "params": {"T_max": 110, "eta_min": 5.289610681565301e-06},
     },
-
-    # --- Loss (single-head supervised mode) ---
-    "loss": {
-        "name": "CrossEntropyLoss",
-        "params": {},
-    },
-
-    # --- Metric (single-head mode) ---
+    "loss": {"name": "MSELoss", "params": {}},
     "metric": {
-        "name": "accuracy_score",
-        "direction": "maximize",
+        "name": "root_mean_squared_error",
+        "direction": "minimize",
         "params": {},
     },
-
-    # --- Prediction post-processing ---
-    "postprocessing": {
-        "enabled": False,
-        "threshold": 0.5,  # only applied to binary label output when explicitly enabled
-    },
-
-    # --- Visualization ---
     "visualization": {
         "save_training_curves": True,
         "save_validation_plot": True,
         "save_cv_scores": True,
     },
-
-    # --- Model export / conversion ---
-    "conversion": {
-        "enabled": False,
-        "formats": ["torch_export"],
-        "opset_version": 18,
-    },
-
-    "tracking": {"wandb": False, "tensorboard": False,
-                 "wandb_project_name": "DL-Pipeline", "wandb_username": None, "wandb_log_config": True},
-
-    # --- Logging / monitoring ---
-    # Local artifacts are always the source of truth. W&B is the remote dashboard.
-    "logging": {
-        "prints": True,
-        "txt_file": True,
-        "csv_file": True,
-        "telegram": False,
-    },
+    "logging": {"prints": True, "txt_file": True, "csv_file": True},
 }
 
 config = OmegaConf.create(config)

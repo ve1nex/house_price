@@ -1,0 +1,34 @@
+general:
+  experiment_name: clean_cv_v1_final
+paths:
+  classic_checkpoints: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints
+  dl_checkpoints: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints
+  ensembles_root: /Users/ve1nex/Desktop/house_price2/checkpoints/ensembles
+metric:
+  name: root_mean_squared_error
+  direction: minimize
+  params: {}
+ensemble:
+  preset: classic_mlp_average
+  target_transform: log1p
+  meta_model:
+    name: Ridge
+    params:
+      alpha: 1.0
+  presets:
+    classic_mlp_average:
+      type: average
+      members: &id001
+      - name: classic
+        source: classic
+        experiment: clean_cv_v1_classic
+      - name: mlp
+        source: dl
+        experiment: clean_cv_v1_dl
+    classic_mlp_stacking:
+      type: stacking
+      members: *id001
+visualization:
+  save_validation_plot: true
+  save_cv_scores: true
+  save_ensemble_diagnostics: true
