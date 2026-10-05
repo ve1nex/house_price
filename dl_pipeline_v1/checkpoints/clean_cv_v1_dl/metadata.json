@@ -1,0 +1,141 @@
+{
+  "created_at": "2026-10-05T21:45:14",
+  "experiment": "clean_cv_v1_dl",
+  "task": "regression",
+  "features": {
+    "shape": [
+      1457,
+      77
+    ],
+    "columns": [
+      "MSSubClass",
+      "MSZoning",
+      "LotFrontage",
+      "LotArea",
+      "Street",
+      "Alley",
+      "LotShape",
+      "LandContour",
+      "Utilities",
+      "LotConfig",
+      "LandSlope",
+      "Neighborhood",
+      "Condition1",
+      "Condition2",
+      "BldgType",
+      "HouseStyle",
+      "OverallQual",
+      "OverallCond",
+      "YearBuilt",
+      "YearRemodAdd",
+      "RoofStyle",
+      "RoofMatl",
+      "Exterior1st",
+      "MasVnrType",
+      "MasVnrArea",
+      "ExterQual",
+      "ExterCond",
+      "Foundation",
+      "BsmtQual",
+      "BsmtCond",
+      "BsmtExposure",
+      "BsmtFinType1",
+      "BsmtFinSF1",
+      "BsmtFinType2",
+      "BsmtFinSF2",
+      "BsmtUnfSF",
+      "TotalBsmtSF",
+      "Heating",
+      "HeatingQC",
+      "CentralAir",
+      "Electrical",
+      "1stFlrSF",
+      "2ndFlrSF",
+      "LowQualFinSF",
+      "GrLivArea",
+      "BsmtFullBath",
+      "BsmtHalfBath",
+      "FullBath",
+      "HalfBath",
+      "BedroomAbvGr",
+      "KitchenAbvGr",
+      "KitchenQual",
+      "TotRmsAbvGrd",
+      "Functional",
+      "Fireplaces",
+      "FireplaceQu",
+      "GarageType",
+      "GarageFinish",
+      "GarageCars",
+      "GarageQual",
+      "PavedDrive",
+      "WoodDeckSF",
+      "OpenPorchSF",
+      "EnclosedPorch",
+      "3SsnPorch",
+      "ScreenPorch",
+      "PoolArea",
+      "PoolQC",
+      "Fence",
+      "MiscFeature",
+      "MiscVal",
+      "MoSold",
+      "YrSold",
+      "SaleType",
+      "SaleCondition",
+      "MSSubClassCat",
+      "Spaciousness"
+    ]
+  },
+  "labels": {
+    "shape": [
+      1457
+    ],
+    "dtype": "float32",
+    "samples": 1457
+  },
+  "groups": null,
+  "fold_ids": {
+    "shape": [
+      1457
+    ],
+    "dtype": "int64",
+    "samples": 1457
+  },
+  "sources": {
+    "features": {
+      "path": "/Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/../classic_ml_pipeline_v8/data/train.csv",
+      "size_bytes": 460676,
+      "sha256": null
+    },
+    "labels": {
+      "path": "/Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/../classic_ml_pipeline_v8/data/train.csv",
+      "size_bytes": 460676,
+      "sha256": null
+    },
+    "folds": {
+      "strategy": "KFold",
+      "seed": 1027309
+    }
+  },
+  "classes": null,
+  "id_namespace": "house_prices_id",
+  "metric": "root_mean_squared_error",
+  "metric_direction": "minimize",
+  "fold_scores": {
+    "0": 0.11378536373376846,
+    "1": 0.13407662510871887,
+    "2": 0.11937560141086578,
+    "3": 0.11137145757675171,
+    "4": 0.10277215391397476
+  },
+  "cv_mean": 0.11627624034881592,
+  "cv_std": 0.01038346230681968,
+  "oof_complete": true,
+  "n_oof": 1457,
+  "n_train": 1457,
+  "preprocessing": "per_fold",
+  "training_time_seconds": 78.72611091705039,
+  "inference_time_seconds": 0.5251679169014096,
+  "test_prediction_stage": "base"
+}

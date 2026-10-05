@@ -12,5 +12,5 @@ config = {
     "classic_experiment": "clean_cv_v1_classic",
     "dl_experiment": "clean_cv_v1_dl",
     "final_experiment": "clean_cv_v1_final",
-    "new_experiment_prefix": "clean_cv_v1",
+    "new_experiment_prefix": "clean_cv_v2",
 }

@@ -1,0 +1,380 @@
+general:
+  experiment_name: clean_cv_v1_classic
+  seed: 1027309
+  task: regression
+  mode: train
+  overwrite_experiment: false
+paths:
+  project_root: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8
+  path_to_data: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/data
+  path_to_train_dataset: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/data/train.csv
+  path_to_test_dataset: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/data/test.csv
+  path_to_checkpoints_root: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints
+  path_to_checkpoints: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints/clean_cv_v1_classic
+  path_to_final_model: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints/clean_cv_v1_classic/model.joblib
+  path_to_oof: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints/clean_cv_v1_classic/oof_predictions.csv
+  path_to_predictions: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints/clean_cv_v1_classic/predictions.csv
+  path_to_plots: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints/clean_cv_v1_classic/plots
+  path_to_config_snapshot: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints/clean_cv_v1_classic/config.yaml
+  path_to_metadata: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints/clean_cv_v1_classic/metadata.json
+  path_to_environment: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints/clean_cv_v1_classic/environment.json
+  path_to_logs: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/logs
+  path_to_optuna_root: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/optuna
+  path_to_optuna_db: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/optuna/clean_cv_v1_classic.db
+  path_to_tuning: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints/clean_cv_v1_classic/tuning
+  path_to_tuning_trials: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints/clean_cv_v1_classic/tuning/trials.csv
+  path_to_best_params: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/checkpoints/clean_cv_v1_classic/tuning/best_params.yaml
+  path_to_results_csv: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/logs/results.csv
+  path_to_results_txt: /Users/ve1nex/Desktop/house_price2/classic_ml_pipeline_v8/logs/results.txt
+reproducibility:
+  save_config_snapshot: true
+  save_environment: true
+  save_data_info: true
+  calculate_dataset_hash: false
+data:
+  target: SalePrice
+  target_transform: log1p
+  id_column: Id
+  id_namespace: house_prices_id
+  drop_train_ids:
+  - 524
+  - 1299
+  - 1397
+  drop_columns:
+  - GarageArea
+  - GarageYrBlt
+  - Exterior2nd
+  - GarageCond
+data_checks:
+  enabled: true
+  known_leakage_columns: []
+  on_suspicious_feature: warn
+preprocessing:
+  numeric_imputer: median
+  categorical_imputer: most_frequent
+  scale_numeric: true
+  encode_categorical: true
+  missing_as_none:
+  - Alley
+  - BsmtQual
+  - BsmtCond
+  - BsmtExposure
+  - BsmtFinType1
+  - BsmtFinType2
+  - FireplaceQu
+  - GarageType
+  - GarageFinish
+  - GarageQual
+  - GarageCond
+  - PoolQC
+  - Fence
+  - MiscFeature
+  - MasVnrType
+  missing_as_zero:
+  - MasVnrArea
+  - BsmtFinSF1
+  - BsmtFinSF2
+  - BsmtUnfSF
+  - TotalBsmtSF
+  - BsmtFullBath
+  - BsmtHalfBath
+  - GarageCars
+  - GarageArea
+feature_engineering:
+  enabled: true
+split:
+  strategy: KFold
+  n_splits: 5
+  folds_to_train:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  shuffle: true
+training:
+  save_oof_predictions: true
+  train_final_model: true
+  predict_test_after_fit: true
+model:
+  name: GradientBoostingRegressor
+models:
+  LinearRegression:
+    regularization: elasticnet
+    alpha: 0.0005001389415823808
+    l1_ratio: 0.922725283130898
+    fit_intercept: true
+    positive: false
+    max_iter: 10000
+    tol: 0.0001
+    random_state: 1027309
+    solver: auto
+    selection: cyclic
+    n_jobs: 1
+  KNeighborsRegressor:
+    n_neighbors: 15
+    weights: uniform
+    algorithm: auto
+    leaf_size: 30
+    p: 2
+    metric: minkowski
+    n_jobs: 1
+  RandomForestRegressor:
+    n_estimators: 300
+    max_depth: null
+    max_features: 1.0
+    min_samples_leaf: 1
+    min_samples_split: 2
+    bootstrap: true
+    max_samples: null
+    criterion: squared_error
+    random_state: 1027309
+    n_jobs: 1
+  GradientBoostingRegressor:
+    n_estimators: 450
+    learning_rate: 0.06502534449667197
+    max_depth: 2
+    subsample: 0.565744639044207
+    min_samples_split: 14
+    min_samples_leaf: 4
+    max_features: null
+    loss: squared_error
+    n_iter_no_change: null
+    random_state: 1027309
+  XGBRegressor:
+    n_estimators: 250
+    learning_rate: 0.04542518636613426
+    max_depth: 4
+    min_child_weight: 6.932466798974734
+    gamma: 0.02430668963171661
+    subsample: 0.7120376394509951
+    colsample_bytree: 0.8183172250459676
+    reg_alpha: 0.006703085914184075
+    reg_lambda: 0.013231716631721216
+    tree_method: exact
+    objective: reg:squarederror
+    random_state: 1027309
+    n_jobs: 1
+  LGBMRegressor:
+    n_estimators: 1150
+    learning_rate: 0.011008771485856902
+    num_leaves: 24
+    max_depth: 9
+    min_child_samples: 5
+    subsample: 0.5366817499994514
+    subsample_freq: 1
+    colsample_bytree: 0.6695500225692324
+    reg_alpha: 6.087236765197375e-07
+    reg_lambda: 4.5668471583483656e-07
+    min_split_gain: 0.0
+    boosting_type: gbdt
+    random_state: 1027309
+    n_jobs: 1
+    verbosity: -1
+estimator_strategy:
+  enabled: true
+  type: stacking
+  models:
+    regression:
+    - LinearRegression
+    - GradientBoostingRegressor
+    - LGBMRegressor
+  weights:
+    regression:
+    - 1.0
+    - 1.0
+    - 1.0
+  stacking:
+    final_model:
+      regression: LinearRegression
+    cv: 5
+    passthrough: false
+    n_jobs: -1
+metric:
+  name: root_mean_squared_error
+  direction: minimize
+  params: {}
+tuning:
+  enabled: false
+  n_trials: 150
+  direction: auto
+  sampler: tpe
+  study_name: clean_cv_v1_classic_tuning
+  resume_study: false
+  folds_to_use:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  search_spaces:
+    LinearRegression:
+      alpha:
+        type: float
+        low: 1.0e-05
+        high: 0.001
+        log: true
+      l1_ratio:
+        type: float
+        low: 0.9
+        high: 1.0
+    KNeighborsRegressor:
+      n_neighbors:
+        type: int
+        low: 3
+        high: 25
+        step: 1
+      weights:
+        type: categorical
+        choices:
+        - uniform
+        - distance
+      p:
+        type: categorical
+        choices:
+        - 1
+        - 2
+    RandomForestRegressor:
+      n_estimators:
+        type: int
+        low: 100
+        high: 1000
+        step: 50
+      max_depth:
+        type: int
+        low: 3
+        high: 15
+      min_samples_split:
+        type: int
+        low: 2
+        high: 20
+      min_samples_leaf:
+        type: int
+        low: 1
+        high: 10
+    GradientBoostingRegressor:
+      n_estimators:
+        type: int
+        low: 50
+        high: 500
+        step: 25
+      learning_rate:
+        type: float
+        low: 0.01
+        high: 0.3
+        log: true
+      max_depth:
+        type: int
+        low: 2
+        high: 8
+      min_samples_split:
+        type: int
+        low: 2
+        high: 20
+      min_samples_leaf:
+        type: int
+        low: 1
+        high: 10
+      subsample:
+        type: float
+        low: 0.5
+        high: 1.0
+      max_features:
+        type: categorical
+        choices:
+        - null
+        - sqrt
+        - log2
+    XGBRegressor:
+      n_estimators:
+        type: int
+        low: 100
+        high: 1200
+        step: 50
+      learning_rate:
+        type: float
+        low: 0.005
+        high: 0.3
+        log: true
+      max_depth:
+        type: int
+        low: 2
+        high: 8
+      min_child_weight:
+        type: float
+        low: 0.5
+        high: 20.0
+        log: true
+      gamma:
+        type: float
+        low: 0.0
+        high: 10.0
+      subsample:
+        type: float
+        low: 0.5
+        high: 1.0
+      colsample_bytree:
+        type: float
+        low: 0.5
+        high: 1.0
+      reg_alpha:
+        type: float
+        low: 1.0e-08
+        high: 10.0
+        log: true
+      reg_lambda:
+        type: float
+        low: 0.001
+        high: 100.0
+        log: true
+    LGBMRegressor:
+      n_estimators:
+        type: int
+        low: 100
+        high: 1200
+        step: 50
+      learning_rate:
+        type: float
+        low: 0.005
+        high: 0.3
+        log: true
+      num_leaves:
+        type: int
+        low: 8
+        high: 64
+      max_depth:
+        type: int
+        low: 3
+        high: 10
+      min_child_samples:
+        type: int
+        low: 5
+        high: 100
+      subsample:
+        type: float
+        low: 0.5
+        high: 1.0
+      colsample_bytree:
+        type: float
+        low: 0.5
+        high: 1.0
+      reg_alpha:
+        type: float
+        low: 1.0e-08
+        high: 10.0
+        log: true
+      reg_lambda:
+        type: float
+        low: 1.0e-08
+        high: 10.0
+        log: true
+visualization:
+  save_validation_plot: true
+  save_cv_scores: true
+  save_feature_importance: true
+  show_shap: false
+  shap_max_samples: 500
+logging:
+  prints: true
+  txt_file: true
+  csv_file: true

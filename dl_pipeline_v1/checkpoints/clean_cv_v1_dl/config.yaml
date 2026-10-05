@@ -1,0 +1,228 @@
+general:
+  experiment_name: clean_cv_v1_dl
+  seed: 1027309
+  task: regression
+  mode: train
+  overwrite_experiment: false
+paths:
+  path_to_test_features: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/data/test_features.npy
+  path_to_checkpoints: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl
+  path_to_fold_checkpoints: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl/folds
+  path_to_oof: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl/oof_predictions.csv
+  path_to_oof_raw: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl/oof_raw_outputs.npz
+  path_to_predictions: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl/predictions.csv
+  path_to_plots: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl/plots
+  path_to_config_snapshot: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl/config.yaml
+  path_to_metadata: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl/metadata.json
+  path_to_environment: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl/environment.json
+  path_to_logs: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/logs
+  path_to_optuna_root: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/optuna
+  path_to_optuna_db: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/optuna/clean_cv_v1_dl.db
+  path_to_tuning: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl/tuning
+  path_to_tuning_trials: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl/tuning/trials.csv
+  path_to_best_params: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/checkpoints/clean_cv_v1_dl/tuning/best_params.yaml
+  path_to_results_csv: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/logs/results.csv
+  path_to_results_txt: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/logs/results.txt
+  path_to_train_dataset: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/../classic_ml_pipeline_v8/data/train.csv
+  path_to_test_dataset: /Users/ve1nex/Desktop/house_price2/dl_pipeline_v1/../classic_ml_pipeline_v8/data/test.csv
+reproducibility:
+  save_config_snapshot: true
+  save_environment: true
+  save_data_info: true
+  calculate_dataset_hash: false
+  deterministic: true
+data:
+  target: SalePrice
+  id_column: Id
+  id_namespace: house_prices_id
+  target_transform: log1p
+  drop_train_ids:
+  - 524
+  - 1299
+  - 1397
+  drop_columns:
+  - GarageArea
+  - GarageYrBlt
+  - Exterior2nd
+  - GarageCond
+split:
+  strategy: KFold
+  n_splits: 5
+  folds_to_train:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  folds_to_inference:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  shuffle: true
+training:
+  num_epochs: 300
+  device: auto
+  save_best: true
+  save_last: true
+dataloader_params:
+  batch_size: 16
+  shuffle: true
+  drop_last: false
+regularization:
+  enabled: true
+  dropout:
+    enabled: true
+    p: 0.05641011715961437
+  weight_decay:
+    enabled: true
+    value: 1.0899202432093064e-05
+optimization:
+  enabled: true
+  training_control:
+    early_stopping:
+      enabled: true
+      patience: 25
+    gradient_clipping:
+      enabled: true
+      max_norm: 1.0
+    scheduler:
+      enabled: true
+tuning:
+  enabled: false
+  n_trials: 300
+  direction: auto
+  sampler: tpe
+  study_name: clean_cv_v1_dl_tuning
+  resume_study: false
+  folds_to_use:
+  - 0
+  - 1
+  - 2
+  pruning:
+    enabled: true
+    n_startup_trials: 10
+    n_warmup_steps: 10
+  search_space:
+    learning_rate:
+      path: optimizer.params.lr
+      type: float
+      low: 1.0e-05
+      high: 0.005
+      log: true
+    batch_size:
+      path: dataloader_params.batch_size
+      type: categorical
+      choices:
+      - 16
+      - 32
+      - 64
+      - 128
+    hidden_dim_1:
+      path: model.params.hidden_dims.0
+      type: categorical
+      choices:
+      - 16
+      - 32
+      - 64
+      - 128
+      - 256
+      - 512
+    hidden_dim_2:
+      path: model.params.hidden_dims.1
+      type: categorical
+      choices:
+      - 8
+      - 16
+      - 32
+      - 64
+      - 128
+      - 256
+    hidden_dim_3:
+      path: model.params.hidden_dims.2
+      type: categorical
+      choices:
+      - 8
+      - 16
+      - 32
+      - 64
+      - 128
+    activation:
+      path: model.params.activation
+      type: categorical
+      choices:
+      - ReLU
+      - GELU
+      - SiLU
+    dropout:
+      path: regularization.dropout.p
+      type: float
+      low: 0.0
+      high: 0.5
+    weight_decay:
+      path: regularization.weight_decay.value
+      type: float
+      low: 1.0e-08
+      high: 0.01
+      log: true
+    optimizer:
+      path: optimizer.name
+      type: categorical
+      choices:
+      - Adam
+      - AdamW
+    scheduler_enabled:
+      path: optimization.training_control.scheduler.enabled
+      type: categorical
+      choices:
+      - false
+      - true
+    scheduler_T_max:
+      path: scheduler.params.T_max
+      type: int
+      low: 20
+      high: 150
+      step: 10
+    scheduler_eta_min:
+      path: scheduler.params.eta_min
+      type: float
+      low: 1.0e-07
+      high: 0.0001
+      log: true
+model:
+  name: MLP
+  input_shape:
+  - 293
+  params:
+    hidden_dims:
+    - 64
+    - 32
+    - 128
+    activation: SiLU
+optimizer:
+  name: Adam
+  params:
+    lr: 0.0010697325967296643
+    weight_decay: 0.0
+scheduler:
+  name: CosineAnnealingLR
+  interval: epoch
+  params:
+    T_max: 110
+    eta_min: 5.289610681565301e-06
+loss:
+  name: MSELoss
+  params: {}
+metric:
+  name: root_mean_squared_error
+  direction: minimize
+  params: {}
+visualization:
+  save_training_curves: true
+  save_validation_plot: true
+  save_cv_scores: true
+logging:
+  prints: true
+  txt_file: true
+  csv_file: true

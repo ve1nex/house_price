@@ -1,0 +1,15 @@
+{
+  "created_at": "2026-10-05T21:45:14",
+  "python": "3.12.3 (v3.12.3:f6650f9ad7, Apr  9 2024, 08:18:47) [Clang 13.0.0 (clang-1300.0.29.30)]",
+  "python_executable": "/Users/ve1nex/Desktop/titanic_ready/.venv/bin/python",
+  "platform": "macOS-15.7.4-arm64-arm-64bit",
+  "torch_cuda_available": false,
+  "cuda_version": null,
+  "packages": {
+    "torch": "2.14.1",
+    "numpy": "2.5.3",
+    "scikit-learn": "1.9.1",
+    "omegaconf": "2.3.1",
+    "matplotlib": "3.11.2"
+  }
+}
